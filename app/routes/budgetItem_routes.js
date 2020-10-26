@@ -45,10 +45,55 @@ router.get('/items', requireToken, (req, res, next) => {
 
 // SHOW
 // GET /items/**itemId**
-router.get('items/:id', requireToken, (req, res, next) => {
+router.get('/items/:id', requireToken, (req, res, next) => {
   BudgetItem.findById(req.params.id)
     .then(handle404)
     .then(item => res.status(200).json({ item: item.toObject() }))
+    .catch(next)
+})
+
+// CREATE
+// POST /items
+router.post('/items', requireToken, (req, res, next) => {
+  // set owner of new budgetItem to be current user
+  req.body.item.owner = req.user.id
+
+  BudgetItem.create(req.body.item)
+    .then(item => res.status(201).json({ item: item.toObject() }))
+    // if an error occurs, pass it off to our error handler
+    // the error handler needs the error message and the `res` object so that it
+    // can send an error message back to the client
+    .catch(next)
+})
+
+// UPDATE
+// PATCH /items/**itemId**
+router.patch('/items/:id', requireToken, removeBlanks, (req, res, next) => {
+  delete req.body.item.owner
+
+  BudgetItem.findById(req.params.id)
+    .then(handle404)
+    .then(item => {
+      // pass the `req` object and the Mongoose record to `requireOwnership`
+      // it will throw an error if the current user isn't the owner
+      requireOwnership(req, item)
+      // passes the result to the next .then
+      return item.updateOne(req.body.item)
+    })
+    .then(() => res.sendStatus(204)) // no json, just an affirmative status
+    .catch(next) // or an error if no owner, bad update, etc.
+})
+
+// DESTROY
+// DELETE /items/**itemId**
+router.delete('/items/:id', requireToken, (req, res, next) => {
+  BudgetItem.findById(req.params.id)
+    .then(handle404)
+    .then(item => {
+      requireOwnership(req, item)
+      item.deleteOne()
+    })
+    .then(() => res.sendStatus(204)) // no response, just status update
     .catch(next)
 })
 

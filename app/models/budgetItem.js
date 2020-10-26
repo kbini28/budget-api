@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 
 const budgetItemSchema = new mongoose.Schema({
-  inEx: {
+  transaction: {
     type: String,
     required: true
   },
